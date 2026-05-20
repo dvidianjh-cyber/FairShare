@@ -1,0 +1,14 @@
+{
+  "name": "flatmate-mate",
+  "version": "1.0.0",
+  "description": "Zero-friction bill splitting for shared households",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.10"
+  }
+}
