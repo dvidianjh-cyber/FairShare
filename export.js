@@ -6,8 +6,9 @@
  * @param {string} groupName 
  * @param {Array<{ name: string, netAmount: number }>} netBalances 
  * @param {Array<any>} bills 
+ * @param {Array<any>} members 
  */
-export function exportBalancesToCSV(userName, groupName, netBalances, bills) {
+export function exportBalancesToCSV(userName, groupName, netBalances, bills, members) {
   const lines = [];
 
   // File Header
@@ -47,21 +48,28 @@ export function exportBalancesToCSV(userName, groupName, netBalances, bills) {
 
   // Section 2: Detailed Bill List
   lines.push(`DETAILED RECORD OF INVOLVED BILLS`);
-  lines.push(`Purpose/Title,Payer,Your Share (GBP),Total Bill (GBP),Date Logged,Due Date,Status`);
+  lines.push(`Purpose/Title,Payer,Your Share (GBP),Date Logged,Due Date,Status`);
 
   bills.forEach(bill => {
-    const userSplit = bill.splits.find(s => s.memberId === bill.activeMemberId);
+    const userSplit = bill.splits.find(s => s.memberId === bills.activeMemberId);
     const splitAmount = userSplit ? (userSplit.amountOwed / 100).toFixed(2) : '0.00';
-    const totalAmount = (bill.totalAmount / 100).toFixed(2);
     const dateLogged = new Date(bill.dateLogged).toLocaleDateString('en-GB');
     const dateDue = new Date(bill.dateDue).toLocaleDateString('en-GB');
     
-    let payerName = bill.payerName || 'Unknown';
-    let splitPaidStatus = '';
-    
-    if (bill.payerId === bill.activeMemberId) {
+    // Resolve payer name from members array
+    let payerName = 'Unknown';
+    if (bill.payerId === bills.activeMemberId) {
       payerName = 'You';
-      const unpaidCount = bill.splits.filter(s => s.memberId !== bill.activeMemberId && !s.isPaid).length;
+    } else {
+      const payerMember = members.find(m => m._id === bill.payerId);
+      if (payerMember) {
+        payerName = payerMember.name;
+      }
+    }
+    
+    let splitPaidStatus = '';
+    if (bill.payerId === bills.activeMemberId) {
+      const unpaidCount = bill.splits.filter(s => s.memberId !== bills.activeMemberId && !s.isPaid).length;
       splitPaidStatus = unpaidCount === 0 ? 'Fully Paid' : `${unpaidCount} unpaid shares`;
     } else {
       splitPaidStatus = userSplit && userSplit.isPaid ? 'Paid' : 'Unpaid';
@@ -71,15 +79,15 @@ export function exportBalancesToCSV(userName, groupName, netBalances, bills) {
       escapeCSV(bill.purpose),
       escapeCSV(payerName),
       `£${splitAmount}`,
-      `£${totalAmount}`,
       dateLogged,
       dateDue,
       splitPaidStatus
     ].join(','));
   });
 
-  // Construct CSV payload
-  const csvContent = lines.join('\n');
+  // Construct CSV payload with UTF-8 BOM for Excel compatibility
+  const BOM = '\uFEFF';
+  const csvContent = BOM + lines.join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
 

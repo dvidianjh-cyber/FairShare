@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-05-21
+
+### Added
+- Email address field for members (optional) - can be added when creating or editing members
+- "Send Welcome Email" button for members with email addresses
+- Welcome email functionality with Resend.com integration
+- Email API endpoint `/api/send-welcome-email` for sending group invitations via email
+- Environment variable support via `.env` file for secure credential storage
+- `.env.example` template file for environment configuration
+- Comprehensive RestDB.io database setup documentation in `RESTDB-SETUP.md`
+- Console fallback for welcome emails when email service is not configured
+- Loading spinner overlay that automatically displays during API requests
+
+### Changed
+- Server now loads environment variables from `.env` file on startup
+- RestDB.io credentials can now be configured via environment variables
+- Email service (Resend) credentials configurable via `RESEND_API_KEY` environment variable
+- All update operations now include required fields for RestDB compatibility
+
+### Fixed
+- API client error handling - no longer tries to read response body twice
+- RestDB update operations now include all required fields (name, config, etc.)
+- Setup endpoint properly handles undefined config object
+
+## [0.4.0] - 2026-05-21
+
+### Added
+- "Add a Bill" button directly on the Dashboard for quick access to bill logging
+- Refresh buttons on both Dashboard and My Bills screens to manually reload data
+- User name and group name now displayed permanently in the header bar across all views
+
+### Changed
+- New member "Join Date" now defaults to Today when group doesn't require date ranges (matching organizer behavior)
+
+### Fixed
+- CSV export encoding issue: Added UTF-8 BOM to ensure currency symbols display correctly in Excel
+- CSV export "Payer" column now correctly shows member names instead of "Unknown"
+- CSV export "Your Share" column now correctly calculates and displays your portion of each bill
+- CSV export no longer includes "Total Bill" amount column per specification
+
+### Removed
+- "Hi, {User}" and group name removed from dashboard content (moved to header)
+
 ## [0.3.0] - 2026-05-20
 
 ### Added

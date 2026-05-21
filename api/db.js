@@ -131,8 +131,8 @@ export const db = {
     }
   },
 
-  async createMember(groupId, name, secureToken, joinDate, leaveDate = null, isTokenActive = true) {
-    const newMember = { groupId, name, secureToken, joinDate, leaveDate, isTokenActive };
+  async createMember(groupId, name, secureToken, joinDate, leaveDate = null, isTokenActive = true, email = null) {
+    const newMember = { groupId, name, secureToken, joinDate, leaveDate, isTokenActive, email };
     if (isRestDB) {
       return await restdbFetch('/members', {
         method: 'POST',

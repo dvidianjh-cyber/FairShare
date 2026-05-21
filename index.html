@@ -25,6 +25,10 @@
         <span>FairShare</span>
       </div>
       
+      <div class="header-user-info" id="header-user-info" style="flex: 1; margin: 0 20px; color: var(--text-secondary); font-size: 1.2rem;">
+        <!-- User and Group name will be displayed here -->
+      </div>
+      
       <div class="nav-controls">
         <nav class="nav-tabs">
           <button id="tab-dashboard" class="tab-btn active" data-tab="dashboard">
@@ -128,9 +132,11 @@
 
     <!-- SECTION B: Dashboard View -->
     <section id="dashboard-view" class="view-section">
-      <div style="margin-bottom: 30px;">
-        <h2 id="dashboard-welcome-title">Welcome back!</h2>
-        <p class="balance-text" id="dashboard-group-subtitle">Group Name</p>
+      <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+        <h2>Dashboard</h2>
+        <button id="dashboard-refresh-btn" class="btn btn-secondary btn-sm" title="Refresh Data">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh
+        </button>
       </div>
 
       <div class="dashboard-grid">
@@ -139,7 +145,10 @@
           <h3>Your Net Position</h3>
           <div id="dashboard-net-balance" class="balance-value settled">£0.00</div>
           <p id="dashboard-net-text" class="balance-text">You are fully settled up!</p>
-          <div style="margin-top: 25px;">
+          <div style="margin-top: 25px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="dashboard-add-bill-btn" class="btn btn-primary">
+              <i class="fa-solid fa-plus"></i> Add a Bill
+            </button>
             <button id="export-balances-btn" class="btn btn-secondary">
               <i class="fa-solid fa-file-csv"></i> Export Balances (CSV)
             </button>
@@ -163,9 +172,14 @@
           <h2>Group Expenses</h2>
           <p class="balance-text">Only expenses that directly involve you are shown</p>
         </div>
-        <button id="add-bill-trigger-btn" class="btn btn-primary">
-          <i class="fa-solid fa-plus"></i> Add a Bill
-        </button>
+        <div style="display: flex; gap: 10px;">
+          <button id="bills-refresh-btn" class="btn btn-secondary" title="Refresh Data">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+          </button>
+          <button id="add-bill-trigger-btn" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Add a Bill
+          </button>
+        </div>
       </div>
 
       <div class="bills-grid">
@@ -283,6 +297,10 @@
             <label for="new-member-name">Member Name</label>
             <input type="text" id="new-member-name" class="form-control" placeholder="e.g. Bob Johnson" required>
           </div>
+          <div class="form-group">
+            <label for="new-member-email">Email Address (Optional)</label>
+            <input type="email" id="new-member-email" class="form-control" placeholder="e.g. bob@example.com">
+          </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div class="form-group">
               <label for="new-member-join">Join Date</label>
@@ -317,6 +335,10 @@
           <input type="text" id="edit-member-name" class="form-control" required>
         </div>
         <div class="form-group">
+          <label for="edit-member-email">Email Address (Optional)</label>
+          <input type="email" id="edit-member-email" class="form-control" placeholder="e.g. member@example.com">
+        </div>
+        <div class="form-group">
           <label for="edit-member-join">Join Date</label>
           <input type="date" id="edit-member-join" class="form-control" required>
         </div>
@@ -336,6 +358,14 @@
   <div id="toast" class="toast">
     <i class="fa-solid fa-circle-check" style="color: var(--color-success); font-size: 1.25rem;"></i>
     <span id="toast-message">Message text</span>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <p>Loading...</p>
+    </div>
   </div>
 
   <!-- Client-side JS Application Modules -->

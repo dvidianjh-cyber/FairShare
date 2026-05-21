@@ -1,10 +1,26 @@
-// Last Modified: 2026-05-20T21:11:10Z
+// Last Modified: 2026-05-21
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { URL } from 'url';
 
-const PORT = 3000;
+// Load environment variables from .env file if it exists
+const ENV_PATH = path.join(process.cwd(), '.env');
+if (fs.existsSync(ENV_PATH)) {
+  const envContent = fs.readFileSync(ENV_PATH, 'utf8');
+  envContent.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && valueParts.length > 0) {
+        process.env[key.trim()] = valueParts.join('=').trim();
+      }
+    }
+  });
+  console.log('✓ Environment variables loaded from .env file');
+}
+
+const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = process.cwd();
 
 const MIME_TYPES = {

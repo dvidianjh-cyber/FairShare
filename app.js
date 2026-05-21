@@ -14,6 +14,7 @@ const state = {
 // --- DOM References ---
 const UI = {
   appHeader: document.getElementById('app-header'),
+  headerUserInfo: document.getElementById('header-user-info'),
   tabDashboard: document.getElementById('tab-dashboard'),
   tabBills: document.getElementById('tab-bills'),
   settingsTriggerBtn: document.getElementById('settings-trigger-btn'),
@@ -36,6 +37,7 @@ const UI = {
   useTokenBtn: document.getElementById('use-token-btn'),
   addBillForm: document.getElementById('add-bill-form'),
   addBillTriggerBtn: document.getElementById('add-bill-trigger-btn'),
+  dashboardAddBillBtn: document.getElementById('dashboard-add-bill-btn'),
   addMemberForm: document.getElementById('add-member-form'),
   editMemberForm: document.getElementById('edit-member-form'),
   settingsSaveGroupBtn: document.getElementById('settings-save-group-btn'),
@@ -46,11 +48,11 @@ const UI = {
   editMemberModal: document.getElementById('edit-member-modal'),
 
   // Dynamic Renders
-  dashboardWelcome: document.getElementById('dashboard-welcome-title'),
-  dashboardGroupSubtitle: document.getElementById('dashboard-group-subtitle'),
   dashboardNetBalance: document.getElementById('dashboard-net-balance'),
   dashboardNetText: document.getElementById('dashboard-net-text'),
   dashboardMembersBalances: document.getElementById('dashboard-members-balances'),
+  dashboardRefreshBtn: document.getElementById('dashboard-refresh-btn'),
+  billsRefreshBtn: document.getElementById('bills-refresh-btn'),
   
   billsOweCount: document.getElementById('bills-owe-count'),
   billsIOweList: document.getElementById('bills-i-owe-list'),
@@ -132,14 +134,17 @@ async function appInit() {
   let token = urlParams.get('token');
 
   if (token) {
+    // Token provided in URL - save it and authenticate
     apiClient.setToken(token);
-  } else if (apiClient.hasToken()) {
-    token = apiClient.getToken();
-    const url = new URL(window.location.href);
-    url.searchParams.set('token', token);
-    window.history.replaceState({}, document.title, url.pathname + url.search);
+  } else {
+    // No token in URL - clear any saved token and show onboarding
+    apiClient.clearToken();
+    window.history.replaceState({}, document.title, window.location.pathname);
+    showOnboardingView();
+    return;
   }
 
+  // Try to load session with the token
   if (apiClient.hasToken()) {
     try {
       await loadSessionData();
@@ -150,8 +155,6 @@ async function appInit() {
       window.history.replaceState({}, document.title, window.location.pathname);
       showOnboardingView(err.message || 'Session expired or token revoked.');
     }
-  } else {
-    showOnboardingView();
   }
 }
 
@@ -170,6 +173,9 @@ async function loadSessionData() {
 function showDashboardView() {
   UI.onboardingView.classList.remove('active');
   UI.appHeader.style.display = 'block';
+  
+  // Set header user info
+  UI.headerUserInfo.textContent = `${state.activeMember.name} - Group: ${state.group.name}`;
   
   if (state.activeMember.isOrganizer) {
     UI.settingsTriggerBtn.style.display = 'flex';
@@ -231,9 +237,6 @@ function calculateBalances() {
 // --- Rendering Logic ---
 
 function renderDashboard() {
-  UI.dashboardWelcome.textContent = `Hi, ${state.activeMember.name}!`;
-  UI.dashboardGroupSubtitle.textContent = state.group.name;
-
   let netTotal = 0;
   state.netBalances.forEach(b => { netTotal += b.netAmount; });
 
@@ -560,6 +563,9 @@ function renderSettings() {
     } else {
       activePeriodText += ` | Current Member`;
     }
+    if (m.email) {
+      activePeriodText += ` | ${m.email}`;
+    }
 
     let inviteHtml = '';
     if (m.secureToken) {
@@ -595,10 +601,20 @@ function renderSettings() {
           <button class="btn btn-secondary btn-sm edit-member-dates-btn" 
                   data-id="${m._id}" 
                   data-name="${m.name}" 
+                  data-email="${m.email || ''}"
                   data-join="${formatInputDate(m.joinDate)}" 
                   data-leave="${formatInputDate(m.leaveDate)}">
             <i class="fa-solid fa-pen"></i> Edit
           </button>
+          
+          ${m.email && isMemActive ? `
+            <button class="btn btn-primary btn-sm send-welcome-email-btn" 
+                    data-id="${m._id}" 
+                    data-name="${m.name}"
+                    data-email="${m.email}">
+              <i class="fa-solid fa-envelope"></i> Send Welcome
+            </button>
+          ` : ''}
           
           ${!isSelf ? `
             <button class="btn ${isMemActive ? 'btn-danger' : 'btn-primary'} btn-sm toggle-member-token-btn" 
@@ -648,14 +664,50 @@ function renderSettings() {
       const btn = div.querySelector('.edit-member-dates-btn');
       document.getElementById('edit-member-id').value = btn.dataset.id;
       document.getElementById('edit-member-name').value = btn.dataset.name;
+      document.getElementById('edit-member-email').value = btn.dataset.email || '';
       document.getElementById('edit-member-join').value = btn.dataset.join;
       document.getElementById('edit-member-leave').value = btn.dataset.leave || '';
       
       openModal(UI.editMemberModal);
     });
 
+    const welcomeBtn = div.querySelector('.send-welcome-email-btn');
+    if (welcomeBtn) {
+      welcomeBtn.addEventListener('click', async () => {
+        const memberId = welcomeBtn.dataset.id;
+        const memberName = welcomeBtn.dataset.name;
+        const memberEmail = welcomeBtn.dataset.email;
+        
+        if (!confirm(`Send welcome email to ${memberName} (${memberEmail})?`)) {
+          return;
+        }
+        
+        try {
+          await apiClient.request('/api/send-welcome-email', {
+            method: 'POST',
+            body: JSON.stringify({ memberId })
+          });
+          showToast(`Welcome email sent to ${memberName}!`);
+        } catch (err) {
+          console.error(err);
+          showToast(err.message || 'Failed to send email.');
+        }
+      });
+    }
+
     UI.settingsMembersList.appendChild(div);
   });
+
+  // Set default join date for new members
+  // If group doesn't require date ranges, default to Today (like the organizer)
+  const config = state.group.config || { requireDates: true, requireMemberSelection: true };
+  const newMemberJoinInput = document.getElementById('new-member-join');
+  if (!config.requireDates && newMemberJoinInput) {
+    newMemberJoinInput.value = dayjs().format('YYYY-MM-DD');
+  } else if (newMemberJoinInput) {
+    // Clear any previous default
+    newMemberJoinInput.value = '';
+  }
 }
 
 // --- Modal Helper Functions ---
@@ -791,11 +843,12 @@ function bindEvents() {
   UI.addMemberForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('new-member-name').value.trim();
+    const email = document.getElementById('new-member-email').value.trim() || null;
     const joinDate = document.getElementById('new-member-join').value;
     const leaveDate = document.getElementById('new-member-leave').value || null;
 
     try {
-      await apiClient.addMember({ name, joinDate, leaveDate });
+      await apiClient.addMember({ name, email, joinDate, leaveDate });
       showToast('New member added successfully.');
       UI.addMemberForm.reset();
       
@@ -812,11 +865,12 @@ function bindEvents() {
     e.preventDefault();
     const memberId = document.getElementById('edit-member-id').value;
     const name = document.getElementById('edit-member-name').value.trim();
+    const email = document.getElementById('edit-member-email').value.trim() || null;
     const joinDate = document.getElementById('edit-member-join').value;
     const leaveDate = document.getElementById('edit-member-leave').value || null;
 
     try {
-      await apiClient.updateMember({ memberId, name, joinDate, leaveDate });
+      await apiClient.updateMember({ memberId, name, email, joinDate, leaveDate });
       showToast('Member details updated successfully.');
       closeModal(UI.editMemberModal);
 
@@ -824,7 +878,7 @@ function bindEvents() {
       renderSettings();
       renderDashboard();
       if (memberId === state.activeMember._id) {
-        UI.dashboardWelcome.textContent = `Hi, ${state.activeMember.name}!`;
+        UI.headerUserInfo.textContent = `${state.activeMember.name} - Group: ${state.group.name}`;
       }
     } catch (err) {
       console.error(err);
@@ -869,6 +923,11 @@ function bindEvents() {
 
     renderAddBillMemberChecklist();
     openModal(UI.addBillModal);
+  });
+
+  // Dashboard Add Bill button (same handler as above)
+  UI.dashboardAddBillBtn.addEventListener('click', () => {
+    UI.addBillTriggerBtn.click();
   });
 
   UI.addBillForm['bill-period-start'].addEventListener('change', renderAddBillMemberChecklist);
@@ -941,9 +1000,33 @@ function bindEvents() {
     });
   });
 
+  // Refresh buttons
+  UI.dashboardRefreshBtn.addEventListener('click', async () => {
+    try {
+      await loadSessionData();
+      renderDashboard();
+      showToast('Dashboard refreshed.');
+    } catch (err) {
+      console.error('Refresh failed:', err);
+      showToast('Failed to refresh data.');
+    }
+  });
+
+  UI.billsRefreshBtn.addEventListener('click', async () => {
+    try {
+      await loadSessionData();
+      renderBills();
+      renderDashboard();
+      showToast('Bills refreshed.');
+    } catch (err) {
+      console.error('Refresh failed:', err);
+      showToast('Failed to refresh data.');
+    }
+  });
+
   UI.exportBalancesBtn.addEventListener('click', () => {
     try {
-      exportBalancesToCSV(state.activeMember.name, state.group.name, state.netBalances, state.bills);
+      exportBalancesToCSV(state.activeMember.name, state.group.name, state.netBalances, state.bills, state.members);
       showToast('Statement CSV downloaded.');
     } catch (err) {
       console.error('Export failed:', err);

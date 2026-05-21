@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { name, joinDate, leaveDate } = req.body || {};
+      const { name, joinDate, leaveDate, email } = req.body || {};
 
       if (!name || !name.trim()) {
         res.status(400);
@@ -43,7 +43,8 @@ export default async function handler(req, res) {
         secureToken,
         new Date(joinDate).toISOString(),
         leaveDate ? new Date(leaveDate).toISOString() : null,
-        true // active by default
+        true, // active by default
+        email && email.trim() ? email.trim() : null // email address
       );
 
       res.status(201);
@@ -51,7 +52,7 @@ export default async function handler(req, res) {
     } 
     
     else if (req.method === 'PUT') {
-      const { memberId, name, joinDate, leaveDate, isTokenActive, groupName } = req.body || {};
+      const { memberId, name, joinDate, leaveDate, isTokenActive, groupName, email } = req.body || {};
 
       if (!memberId) {
         res.status(400);
@@ -73,16 +74,24 @@ export default async function handler(req, res) {
 
       // Handle updating the group name if requested
       if (groupName !== undefined && groupName.trim()) {
-        await db.updateGroup(group._id, { name: groupName.trim() });
+        await db.updateGroup(group._id, { 
+          name: groupName.trim(),
+          organizerId: group.organizerId,
+          config: group.config
+        });
       }
 
-      const updateData = {};
-      if (name !== undefined && name.trim()) updateData.name = name.trim();
-      if (joinDate !== undefined) updateData.joinDate = new Date(joinDate).toISOString();
-      if (leaveDate !== undefined) {
-        updateData.leaveDate = leaveDate ? new Date(leaveDate).toISOString() : null;
-      }
-      if (isTokenActive !== undefined) updateData.isTokenActive = !!isTokenActive;
+      const updateData = {
+        // Always include required fields from existing member
+        groupId: mem.groupId,
+        name: name !== undefined && name.trim() ? name.trim() : mem.name,
+        secureToken: mem.secureToken,
+        joinDate: joinDate !== undefined ? new Date(joinDate).toISOString() : mem.joinDate,
+        isTokenActive: isTokenActive !== undefined ? !!isTokenActive : mem.isTokenActive,
+        // Handle optional fields
+        leaveDate: leaveDate !== undefined ? (leaveDate ? new Date(leaveDate).toISOString() : null) : mem.leaveDate,
+        email: email !== undefined ? (email && email.trim() ? email.trim() : null) : mem.email
+      };
 
       const updatedMem = await db.updateMember(memberId, updateData);
 

@@ -672,6 +672,54 @@ main {
   opacity: 1;
 }
 
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(11, 15, 25, 0.85);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+
+.loading-overlay.active {
+  display: flex;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-primary);
+}
+
+.loading-spinner i {
+  font-size: 3rem;
+  color: var(--color-primary);
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Empty States */
 .empty-state {
   display: flex;

@@ -40,11 +40,16 @@ export default async function handler(req, res) {
       secureToken,
       todayISO,
       null, // No leave date
-      true  // Token active
+      true, // Token active
+      (config && config.organizerEmail) ? config.organizerEmail : null // Email address
     );
 
     // 4. Associate organizerId to the group
-    const updatedGroup = await db.updateGroup(group._id, { organizerId: member._id });
+    const updatedGroup = await db.updateGroup(group._id, { 
+      name: group.name,
+      organizerId: member._id,
+      config: group.config
+    });
 
     res.status(201);
     return res.json({

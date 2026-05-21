@@ -1,6 +1,21 @@
-// Last Modified: 2026-05-20T21:11:20Z
+// Last Modified: 2026-05-21
 
 let activeToken = localStorage.getItem('fairshare_token') || '';
+
+// Loading overlay helpers
+function showLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.classList.add('active');
+  }
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+  }
+}
 
 export const apiClient = {
   setToken(token) {
@@ -26,38 +41,49 @@ export const apiClient = {
   },
 
   async request(endpoint, options = {}) {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers
-    };
+    showLoading();
+    
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+      };
 
-    if (activeToken) {
-      headers['Authorization'] = `Bearer ${activeToken}`;
-    }
-
-    const response = await fetch(endpoint, {
-      ...options,
-      headers
-    });
-
-    if (!response.ok) {
-      let errText = '';
-      try {
-        const errJson = await response.json();
-        errText = errJson.error || response.statusText;
-      } catch (e) {
-        errText = await response.text() || response.statusText;
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
       }
-      const error = new Error(errText);
-      error.status = response.status;
-      throw error;
-    }
 
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      return response.json();
+      const response = await fetch(endpoint, {
+        ...options,
+        headers
+      });
+
+      if (!response.ok) {
+        let errText = '';
+        const contentType = response.headers.get('content-type');
+        try {
+          if (contentType && contentType.includes('application/json')) {
+            const errJson = await response.json();
+            errText = errJson.error || response.statusText;
+          } else {
+            errText = await response.text() || response.statusText;
+          }
+        } catch (e) {
+          errText = response.statusText;
+        }
+        const error = new Error(errText);
+        error.status = response.status;
+        throw error;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return response.json();
+      }
+      return response.text();
+    } finally {
+      hideLoading();
     }
-    return response.text();
   },
 
   // Setup Group
